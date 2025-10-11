@@ -1,18 +1,20 @@
-from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
-import torch
-import os
-from src.models.Generator import Generator
-from PIL import Image
 import io
-import numpy as np
+import os
 from contextlib import asynccontextmanager
-from fastapi import HTTPException
+
+import numpy as np
+import torch
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
+from PIL import Image
+
+from src.models.Generator import Generator
 
 model = None
+NOISE_DIM = 128
 
 
-# to only load model once before receiving requests
+# To only load model once before receiving requests
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global model
@@ -26,8 +28,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-NOISE_DIM = 128
-
 
 @app.get("/get_image")
 async def get_image():
@@ -37,7 +37,7 @@ async def get_image():
             generated_image = model(sample_noise)
             img_byte_arr = process_image(generated_image)
             return StreamingResponse(img_byte_arr, media_type="image/png")
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=500, detail="Sorry something went wrong at our end :("
         )
@@ -56,10 +56,10 @@ def process_image(image):
     pil_image = Image.fromarray(image_np)
 
     # Save to bytes buffer (in-memory, not to disk)
-    img_byte_arr = io.BytesIO()  # create buffer like creating a file
+    img_byte_arr = io.BytesIO()  # Create buffer like creating a file
     pil_image.save(
         img_byte_arr, format="PNG"
-    )  # write image to buffer like saving the image
-    img_byte_arr.seek(0)  # to read from start
+    )  # Write image to buffer like saving the image
+    img_byte_arr.seek(0)  # To read from start
 
     return img_byte_arr
